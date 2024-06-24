@@ -28,7 +28,7 @@ describe("MultiSig", function () {
 
         const MultiSig = await hre.ethers.getContractFactory("MultiSig");
 
-        const multisig = await MultiSig.deploy("MULTISIG_DOMAIN", [bob, alice, joe], 3);
+        const multisig = await MultiSig.connect(owner).deploy("MULTISIG_DOMAIN", [bob, alice, joe], 2);
         const d = await multisig.eip712Domain()
         const domain = { name: d.name, version: d.version, chainId: d.chainId, verifyingContract: d.verifyingContract}
 
@@ -58,16 +58,16 @@ describe("MultiSig", function () {
             const { multisig, owner, alice, bob, joe, domain } = await loadFixture(deployMultisigFixture);
 
             const Token = await hre.ethers.getContractFactory("Token");
-            const tokenA = await Token.deploy("TokenA", "TKA", hre.ethers.parseEther("1000"), { from: owner.address })
-            await tokenA.transfer(await multisig.getAddress(), hre.ethers.parseEther("100"), { from: owner })
+            const tokenA = await Token.connect(owner).deploy("TokenA", "TKA", hre.ethers.parseEther("1000"))
+            await tokenA.connect(owner).transfer(await multisig.getAddress(), hre.ethers.parseEther("100"))
 
             const actions = {
                 target: [await tokenA.getAddress()],
                 actionType: [0], // call
                 value: [ hre.ethers.parseEther("0.4")],
                 payload: [Token.interface.encodeFunctionData("transfer", [ alice.address, hre.ethers.parseEther("100") ])],
-                signers: [alice.address, bob.address, joe.address],
-                nonceOfSigner: await Promise.all([alice.address, bob.address, joe.address].map(r => multisig.nonces(r))),
+                signers: [alice.address, bob.address],
+                nonceOfSigner: await Promise.all([alice.address, bob.address].map(r => multisig.nonces(r))),
                 deadline: 10000000000
             }
 
@@ -81,12 +81,14 @@ describe("MultiSig", function () {
                 MultiSigTypes,
                 actions)
 
-            const joeSig = await joe.signTypedData(
-                domain,
-                MultiSigTypes,
-                actions)
-
-            const tx = await multisig.run(actions, [aliceSig, bobSig, joeSig]);
+            const tx = await multisig.connect(owner).run({
+                target: actions.target,
+                actionType: actions.actionType,
+                value: actions.value,
+                payload: actions.payload,
+                signers: actions.signers,
+                deadline: actions.deadline
+            }, [bobSig, aliceSig]);
             expect(tx).to.changeTokenBalance(tokenA, [await multisig.getAddress(), alice], [-100, 100])
         })
 

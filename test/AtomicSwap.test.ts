@@ -32,8 +32,8 @@ describe("AtomicSwap", function () {
         const Token = await hre.ethers.getContractFactory("Token");
 
         const swapper = await AtomicSwap.deploy("SwapperDomain");
-        const tokenA = await Token.deploy("TokenA", "TKA", hre.ethers.parseEther("1000"), { from: owner.address })
-        const tokenB = await Token.deploy("TokenB", "TKB", hre.ethers.parseEther("1000"), { from: owner.address })
+        const tokenA = await Token.connect(owner).deploy("TokenA", "TKA", hre.ethers.parseEther("1000"))
+        const tokenB = await Token.connect(owner).deploy("TokenB", "TKB", hre.ethers.parseEther("1000"))
         const d = await swapper.eip712Domain()
         const domain = { name: d.name, version: d.version, chainId: d.chainId, verifyingContract: d.verifyingContract}
 
@@ -55,11 +55,12 @@ describe("AtomicSwap", function () {
         it('should swap on correct signatures', async function() {
             const { swapper, owner, tokenA, tokenB, bob, alice, domain } = await loadFixture(deploySwapFixture);
             
-            await tokenA.transfer(bob, hre.ethers.parseEther("100"), { from: owner.address })
-            await tokenA.approve(await swapper.getAddress(), hre.ethers.parseEther("100"), { from: bob.address })
+            await tokenA.connect(owner).transfer(bob, hre.ethers.parseEther("100"))
+            console.log(await swapper.getAddress())
+            await tokenA.connect(bob).approve(await swapper.getAddress(), hre.ethers.parseEther("100"))
             
-            await tokenB.transfer(alice, hre.ethers.parseEther("100"), { from: owner })
-            await tokenB.approve(await swapper.getAddress(), hre.ethers.parseEther("100"), { from: alice.address})
+            await tokenB.connect(owner).transfer(alice, hre.ethers.parseEther("100"))
+            await tokenB.connect(alice).approve(await swapper.getAddress(), hre.ethers.parseEther("100"))
 
             const swapOffer = {
                 ownerA: bob.address,
@@ -83,7 +84,7 @@ describe("AtomicSwap", function () {
                 SwapperTypes,
                 swapOffer )
             
-            const tx = await swapper.run(swapOffer, sigA, sigB)
+            const tx = await swapper.connect(owner).run(swapOffer, sigA, sigB)
             expect(tx).to.changeTokenBalances(tokenA, [bob, alice], [-10, 10])
             expect(tx).to.changeTokenBalances(tokenB, [bob, alice], [-5, 5])
         })

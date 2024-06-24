@@ -35,7 +35,7 @@ contract MultiSig is EIP712, Nonces {
         uint256 deadline;
     }
 
-    bytes32 private constant ACTION_TYPEHASH = keccak256("Action(address[] target,uint8[] actionType,uint256[] value,bytes[] payload,address[] signers,uint256[] nonceOfSigner,uint256 deadline)");
+    bytes32 private constant ACTION_TYPEHASH = keccak256("Actions(address[] target,uint8[] actionType,uint256[] value,bytes[] payload,address[] signers,uint256[] nonceOfSigner,uint256 deadline)");
 
     /**
      * @dev Permit deadline has expired.
@@ -100,10 +100,10 @@ contract MultiSig is EIP712, Nonces {
 
         bytes32 hash = _hashTypedDataV4(structHash);
 
-        for (uint256 i = 0; i < signatures.length; i++) { 
-            address signer = ECDSA.recover(hash, signatures[i]);
-            if (signer != actions.signers[i]) {
-                revert ERC2612InvalidSigner(signer, actions.signers[i]);
+        for (uint256 k = 0; k < signatures.length; k++) { 
+            address signer = ECDSA.recover(hash, signatures[k]);
+            if (signer != actions.signers[k]) {
+                revert ERC2612InvalidSigner(signer, actions.signers[k]);
             }
         }
 
