@@ -9,8 +9,10 @@ import {Nonces} from "@openzeppelin/contracts/utils/Nonces.sol";
 import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
-
-
+// Thoughts:
+// So my goto is usually to reach out for docs.openzeppelin.com to see how they did things.
+// Initial direction: had some thoughts on using [ERC20Permit](https://docs.openzeppelin.com/contracts/5.x/api/token/erc20#IERC20Permit) but decided to just stick with regular erc20 and use it as a scaffold.
+// Had some thoughts on adding in [ERC2771](https://docs.openzeppelin.com/contracts/5.x/api/metatx#ERC2771Context) as well, but that would just be more complicated.
 contract AtomicSwap is EIP712, Nonces {
     using SafeERC20 for IERC20;
 
@@ -46,6 +48,10 @@ contract AtomicSwap is EIP712, Nonces {
      */
     constructor(string memory name) EIP712(name, "1") {}
 
+    /**
+     * @dev This runs a swap on two ERC20 tokens
+     * Note: since the assignment asked for ERC20, ERC20Permit tokens are not considered, thus allowance should be setup beforehand.
+     */
     function run(Swap memory swap, bytes memory sigA, bytes memory sigB) public {
         if (block.timestamp > swap.deadline) {
             revert ERC2612ExpiredSignature(swap.deadline);

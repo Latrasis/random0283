@@ -55,11 +55,11 @@ describe("AtomicSwap", function () {
         it('should swap on correct signatures', async function() {
             const { swapper, owner, tokenA, tokenB, bob, alice, domain } = await loadFixture(deploySwapFixture);
             
-            tokenA.transfer(bob, hre.ethers.parseEther("100"), { from: owner })
-            tokenA.approve(await swapper.getAddress(), hre.ethers.parseEther("100"), { from: bob})
+            await tokenA.transfer(bob, hre.ethers.parseEther("100"), { from: owner.address })
+            await tokenA.approve(await swapper.getAddress(), hre.ethers.parseEther("100"), { from: bob.address })
             
-            tokenB.transfer(alice, hre.ethers.parseEther("100"), { from: owner })
-            tokenB.approve(await swapper.getAddress(), hre.ethers.parseEther("100"), { from: alice})
+            await tokenB.transfer(alice, hre.ethers.parseEther("100"), { from: owner })
+            await tokenB.approve(await swapper.getAddress(), hre.ethers.parseEther("100"), { from: alice.address})
 
             const swapOffer = {
                 ownerA: bob.address,
@@ -70,7 +70,7 @@ describe("AtomicSwap", function () {
                 valueB: hre.ethers.parseEther("5"),
                 nonceOwnerA: await swapper.nonces(bob.address),
                 nonceOwnerB: await swapper.nonces(alice.address),
-                deadline: 100 + await hre.ethers.provider.getBlockNumber() 
+                deadline: 10000000000
             }
 
             const sigA = await bob.signTypedData(
@@ -78,12 +78,12 @@ describe("AtomicSwap", function () {
                 SwapperTypes,
                 swapOffer )
             
-            const sigB = await bob.signTypedData(
+            const sigB = await alice.signTypedData(
                 domain,
                 SwapperTypes,
                 swapOffer )
             
-            const tx = swapper.run(swapOffer, sigA, sigB)
+            const tx = await swapper.run(swapOffer, sigA, sigB)
             expect(tx).to.changeTokenBalances(tokenA, [bob, alice], [-10, 10])
             expect(tx).to.changeTokenBalances(tokenB, [bob, alice], [-5, 5])
         })
