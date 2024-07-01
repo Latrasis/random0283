@@ -17,7 +17,6 @@ contract MultiSig is EIP712, Nonces {
 
     uint256 public _minSignatures; 
     mapping (address => bool) public members;
-    mapping (address => bool) internal _hasVoted;
 
     enum ActionType {
         Call, // 0
@@ -69,6 +68,7 @@ contract MultiSig is EIP712, Nonces {
     /**
      * @dev This runs a swap on two ERC20 tokens
      * Note: since the assignment asked for ERC20, ERC20Permit tokens are not considered, thus allowance should be setup beforehand.
+     * To prevent duplicates actions.signers MUST be ordered
      */
     function run(Actions memory actions, bytes[] memory signatures) public {
         if (block.timestamp > actions.deadline) {
@@ -79,12 +79,11 @@ contract MultiSig is EIP712, Nonces {
         if (signatures.length < _minSignatures || signatures.length != actions.signers.length) {
             revert MultiSigUnsufficientSignatures(signatures.length, _minSignatures);
         }
-        for (uint256 i = 0; i < signatures.length; i++) {
-            if (_hasVoted[actions.signers[i]]) {
+        for (uint256 i = 0; i < actions.signers.length; i++) {
+            if (i > 0 && (actions.signers[i-1] >= actions.signers[i])) {
                 revert MultiSigUnsufficientSignatures(signatures.length, _minSignatures);
             }
             signerNonces[i] = _useNonce(actions.signers[i]);
-            _hasVoted[actions.signers[i]] = true;
         }
 
         bytes32 structHash = keccak256(abi.encode(
@@ -107,20 +106,16 @@ contract MultiSig is EIP712, Nonces {
             }
         }
 
-        for (uint256 i = 0; i < signatures.length; i++) { 
-            delete _hasVoted[actions.signers[i]];
-        }
-
         for (uint256 i = 0; i < actions.target.length; i++) {
             ActionType s = ActionType(actions.actionType[i]);
             if (s == ActionType.Call) {
-                (bool success, bytes memory returnData) = address(actions.target[i]).call{ value: actions.value[i] }(actions.payload[i]);
+                (bool success, bytes memory _returnData) = address(actions.target[i]).call{ value: actions.value[i] }(actions.payload[i]);
                 require(success);
             } else if (s == ActionType.DelegateCall) {
-                (bool success, bytes memory returnData) = address(actions.target[i]).delegatecall(actions.payload[i]);
+                (bool success, bytes memory _returnData) = address(actions.target[i]).delegatecall(actions.payload[i]);
                 require(success);
             } else if (s == ActionType.StaticCall) {
-                (bool success, bytes memory returnData) = address(actions.target[i]).staticcall(actions.payload[i]);
+                (bool success, bytes memory _returnData) = address(actions.target[i]).staticcall(actions.payload[i]);
                 require(success);
             }
         }
