@@ -84,9 +84,9 @@ describe("AtomicSwap", function () {
                 SwapperTypes,
                 swapOffer )
             
-            const tx = await swapper.connect(owner).run(swapOffer, sigA, sigB)
-            expect(tx).to.changeTokenBalances(tokenA, [bob, alice], [-10, 10])
-            expect(tx).to.changeTokenBalances(tokenB, [bob, alice], [-5, 5])
+            const tx = swapper.connect(owner).run(swapOffer, sigA, sigB)
+            await expect(tx).to.changeTokenBalances(tokenA, [bob, alice], [hre.ethers.parseEther("-10"), hre.ethers.parseEther("10")])
+            await expect(tx).to.changeTokenBalances(tokenB, [bob, alice], [hre.ethers.parseEther("5"), hre.ethers.parseEther("-5")])
         })
     })
 })
